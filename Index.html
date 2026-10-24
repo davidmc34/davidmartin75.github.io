@@ -1,0 +1,828 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarjeta de Emergencia — Ana Isabel Pulido Calderin</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QR Code Generator library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brandDark: '#07111c',
+                        cardDark: '#0d1d2b',
+                        borderDark: '#20384a',
+                        accentRed: '#ef1d2d',
+                        accentGreen: '#18c86b'
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 15px rgba(239, 29, 45, 0.4)' },
+                            '100%': { boxShadow: '0 0 30px rgba(239, 29, 45, 0.8)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #07111c;
+            color: #f5f8fb;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass-panel {
+            background: rgba(13, 29, 43, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid #20384a;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #07111c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #20384a;
+            border-radius: 4px;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            .glass-panel {
+                background: white !important;
+                border: 1px solid #ccc !important;
+                color: black !important;
+                box-shadow: none !important;
+            }
+            .text-white, .text-gray-200, .text-gray-300 {
+                color: black !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+
+    <!-- Top Utility Bar -->
+    <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 px-4 py-3 no-print">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-950/80 text-red-400 border border-red-800/50 animate-pulse">
+                    <span class="w-2 h-2 rounded-full bg-red-500 mr-1.5"></span>
+                    <span data-i18n="nfcTag">NFC ACTIVO</span>
+                </span>
+            </div>
+
+            <!-- Utility Controls -->
+            <div class="flex items-center gap-2">
+                <!-- Language Toggle -->
+                <button onclick="toggleLanguage()" id="langBtn" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition border border-slate-700 flex items-center gap-1">
+                    <i class="fa-solid font-bold text-xs fa-globe"></i>
+                    <span id="langLabel">EN</span>
+                </button>
+
+                <!-- QR Modal Button -->
+                <button onclick="openQRModal()" title="Código QR" class="p-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition border border-slate-700">
+                    <i class="fa-solid fa-qrcode text-sm"></i>
+                </button>
+
+                <!-- Print Button -->
+                <button onclick="window.print()" title="Imprimir" class="p-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition border border-slate-700">
+                    <i class="fa-solid fa-print text-sm"></i>
+                </button>
+
+                <!-- Edit Toggle Button -->
+                <button onclick="toggleEditMode()" id="editToggleBtn" class="px-3 py-1 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition shadow-sm flex items-center gap-1">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span id="editBtnText" data-i18n="editBtn">Editar</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 pt-4 space-y-4">
+
+        <!-- Notification Toast -->
+        <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-3 transition-all">
+            <i id="toastIcon" class="fa-solid fa-circle-check text-green-400 text-lg"></i>
+            <span id="toastMessage" class="text-sm font-medium"></span>
+        </div>
+
+        <!-- HERO SECTION CARD -->
+        <section class="glass-panel rounded-3xl overflow-hidden shadow-2xl relative">
+            <!-- Top Red Badge Line -->
+            <div class="bg-gradient-to-r from-red-600 via-red-500 to-red-600 py-2 px-4 text-center">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-white flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation animate-bounce"></i>
+                    <span data-i18n="emergencyCardTitle">🚨 TARJETA DE EMERGENCIA I.C.E.</span>
+                </span>
+            </div>
+
+            <div class="p-5 flex flex-col items-center text-center">
+                <!-- Emergency Avatar Icon -->
+                <div class="w-16 h-16 rounded-2xl bg-slate-800/90 border border-slate-700 flex items-center justify-center text-blue-400 text-2xl my-2 shadow-inner">
+                    <i class="fa-solid fa-id-card-clip"></i>
+                </div>
+
+                <!-- Name & Subtitle -->
+                <h1 id="displayName" class="text-2xl font-black text-white tracking-tight mt-1">Ana Isabel Pulido Calderin</h1>
+                <p id="displaySubtitle" class="text-xs text-slate-400 mt-1 max-w-xs" data-i18n="heroSubtitle">
+                    Información médica y de contacto para asistencia inmediata en caso de accidente o indisposición.
+                </p>
+
+                <!-- Quick Location Share Button -->
+                <div class="w-full mt-4 no-print">
+                    <button onclick="shareGPSLocation()" class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-95">
+                        <i class="fa-solid fa-location-dot text-red-400"></i>
+                        <span id="gpsBtnText" data-i18n="shareLocation">Compartir mi Ubicación GPS en Vivo</span>
+                    </button>
+                </div>
+
+                <!-- 112 CALL BUTTON -->
+                <div class="w-full mt-4 no-print">
+                    <a href="tel:112" class="block w-full py-4 px-6 bg-gradient-to-r from-red-600 via-red-500 to-red-600 hover:from-red-500 hover:to-red-500 text-white font-black text-lg sm:text-xl tracking-wide rounded-2xl shadow-lg animate-glow text-center transition transform active:scale-98 flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-phone-volume text-2xl animate-pulse"></i>
+                        <span data-i18n="call112">LLAMAR AL 112</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- PERSONAL DATA CARD -->
+        <section class="glass-panel rounded-2xl p-4 shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-id-card text-blue-400"></i>
+                    <span data-i18n="personalData">Datos Personales</span>
+                </h2>
+                <span class="text-xs text-slate-500 font-mono">DNI / ID</span>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 text-sm">
+                <!-- Full Name -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+                    <div class="text-[11px] text-slate-400 font-medium" data-i18n="fullName">Nombre completo</div>
+                    <div id="fieldFullName" class="font-semibold text-slate-100 mt-0.5">Ana Isabel Pulido Calderin</div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- Date of Birth -->
+                    <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+                        <div class="text-[11px] text-slate-400 font-medium" data-i18n="dob">Fecha Nacimiento</div>
+                        <div id="fieldDob" class="font-semibold text-slate-100 mt-0.5">26/07/1979</div>
+                    </div>
+
+                    <!-- DNI / National ID (masked) -->
+                    <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+                        <div class="text-[11px] text-slate-400 font-medium" data-i18n="dni">DNI / Pasaporte</div>
+                        <div id="fieldDni" class="font-mono font-semibold text-slate-100 mt-0.5">*****000X</div>
+                    </div>
+                </div>
+
+                <!-- Location & Age -->
+                <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80 flex items-center justify-between">
+                    <div>
+                        <div class="text-[11px] text-slate-400 font-medium" data-i18n="residence">Ubicación principal</div>
+                        <div id="fieldResidence" class="font-semibold text-slate-100 mt-0.5">Gran Canaria, España</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[11px] text-slate-400 font-medium" data-i18n="calculatedAge">Edad calc.</div>
+                        <div id="calculatedAge" class="font-bold text-blue-400 mt-0.5">-- años</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- EMERGENCY CONTACTS CARD -->
+        <section class="glass-panel rounded-2xl p-4 shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-users text-emerald-400"></i>
+                    <span data-i18n="iceContacts">Contactos de Emergencia (I.C.E.)</span>
+                </h2>
+                <i class="fa-solid fa-heart-pulse text-red-500 animate-pulse"></i>
+            </div>
+
+            <div class="space-y-3">
+                <!-- Contact 1 -->
+                <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/50" data-i18n="primaryContact">Contacto Principal</span>
+                            <h3 id="c1Name" class="text-base font-bold text-white mt-1">David Martín Chil</h3>
+                            <p id="c1Relation" class="text-xs text-slate-400">Esposo · <span id="c1Phone" class="font-mono text-slate-300">608 72 30 24</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-3 gap-2 mt-1 no-print">
+                        <a id="c1CallBtn" href="tel:+34608723024" class="py-2 px-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-phone"></i>
+                            <span data-i18n="call">Llamar</span>
+                        </a>
+                        <a id="c1WspBtn" href="https://wa.me/34608723024" target="_blank" class="py-2 px-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-600/30 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-brands fa-whatsapp text-sm"></i>
+                            <span>WhatsApp</span>
+                        </a>
+                        <a id="c1SmsBtn" href="sms:+34608723024" class="py-2 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition border border-slate-700">
+                            <i class="fa-solid fa-comment-sms"></i>
+                            <span>SMS</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Contact 2 -->
+                <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-800 flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700" data-i18n="secondaryContact">Contacto Secundario</span>
+                            <h3 id="c2Name" class="text-base font-bold text-white mt-1">Fabián</h3>
+                            <p id="c2Relation" class="text-xs text-slate-400">Hermano · <span id="c2Phone" class="font-mono text-slate-300">699 64 79 33</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-3 gap-2 mt-1 no-print">
+                        <a id="c2CallBtn" href="tel:+34699647933" class="py-2 px-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-phone"></i>
+                            <span data-i18n="call">Llamar</span>
+                        </a>
+                        <a id="c2WspBtn" href="https://wa.me/34699647933" target="_blank" class="py-2 px-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-600/30 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-brands fa-whatsapp text-sm"></i>
+                            <span>WhatsApp</span>
+                        </a>
+                        <a id="c2SmsBtn" href="sms:+34699647933" class="py-2 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition border border-slate-700">
+                            <i class="fa-solid fa-comment-sms"></i>
+                            <span>SMS</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MEDICAL DATA CARD -->
+        <section class="glass-panel rounded-2xl p-4 shadow-xl border-l-4 border-l-red-500">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-notes-medical text-red-400"></i>
+                    <span data-i18n="medicalInfo">Información Médica Vital</span>
+                </h2>
+                <span class="text-xs bg-red-950 text-red-400 border border-red-800/60 font-bold px-2 py-0.5 rounded" data-i18n="firstResponders">Socorristas</span>
+            </div>
+
+            <div class="space-y-3 text-sm">
+                <!-- Blood Group & Donor Status -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-red-950/80 border border-red-800/80 flex items-center justify-center text-red-400 font-black text-lg">
+                            <i class="fa-solid fa-droplet"></i>
+                        </div>
+                        <div>
+                            <div class="text-[11px] text-slate-400 font-medium" data-i18n="bloodType">G. Sanguíneo</div>
+                            <div id="fieldBlood" class="font-extrabold text-red-400 text-base">Pendiente de añadir</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-950/80 border border-amber-800/80 flex items-center justify-center text-amber-400 font-black text-lg">
+                            <i class="fa-solid fa-hands-holding-circle"></i>
+                        </div>
+                        <div>
+                            <div class="text-[11px] text-slate-400 font-medium" data-i18n="organDonor">Donante</div>
+                            <div id="fieldDonor" class="font-extrabold text-amber-300 text-sm">Sí (S.S. España)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Allergies -->
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <div class="flex items-center gap-2 text-xs font-bold text-red-400 mb-1">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span data-i18n="allergies">Alergias Conocidas</span>
+                    </div>
+                    <div id="fieldAllergies" class="text-slate-200 text-xs sm:text-sm font-medium pl-5 list-disc">
+                        • Pendiente de añadir.
+                    </div>
+                </div>
+
+                <!-- Medication -->
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <div class="flex items-center gap-2 text-xs font-bold text-blue-400 mb-1">
+                        <i class="fa-solid fa-pills"></i>
+                        <span data-i18n="medication">Medicación Habitual</span>
+                    </div>
+                    <div id="fieldMedication" class="text-slate-200 text-xs sm:text-sm font-medium">
+                        Pendiente de añadir.
+                    </div>
+                </div>
+
+                <!-- Relevant Conditions / Notes -->
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <div class="flex items-center gap-2 text-xs font-bold text-slate-300 mb-1">
+                        <i class="fa-solid fa-file-medical"></i>
+                        <span data-i18n="relevantInfo">Historial / Observaciones Relevantes</span>
+                    </div>
+                    <p id="fieldNotes" class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                        Pendiente de añadir. En caso de emergencia o accidente, contactar directamente a los familiares listados arriba.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- INFORMATION / ABOUT NFC CARD -->
+        <section class="glass-panel rounded-2xl p-4 shadow-xl text-xs text-slate-400 leading-relaxed">
+            <div class="flex items-center gap-2 font-bold text-slate-300 mb-2 text-sm">
+                <i class="fa-solid fa-circle-info text-blue-400"></i>
+                <span data-i18n="infoTitle">Información de la Tarjeta</span>
+            </div>
+            <p data-i18n="infoText">
+                Has accedido a esta página mediante la tarjeta NFC personal de Ana Isabel Pulido Calderin. Esta interfaz interactiva contiene datos vitales de emergencia diseñados para facilitar su identificación inmediata, tratamiento médico primario y contacto directo con sus allegados en caso de imprevisto o emergencia médica.
+            </p>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center py-4 text-xs text-slate-500 font-medium no-print">
+            <p data-i18n="footerThanks">Gracias por prestar asistencia ❤️</p>
+            <p class="text-[10px] text-slate-600 mt-1">Tarjeta de Emergencia NFC v2.5 · Seguridad y Salud</p>
+        </footer>
+
+    </main>
+
+    <!-- QR CODE MODAL -->
+    <div id="qrModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-sm w-full text-center space-y-4 shadow-2xl relative">
+            <button onclick="closeQRModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-2">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="text-lg font-bold text-white" data-i18n="qrTitle">Código QR de Emergencia</h3>
+            <p class="text-xs text-slate-400" data-i18n="qrDesc">Escanea este código con cualquier cámara móvil para abrir esta tarjeta de emergencia al instante.</p>
+            
+            <div id="qrcode" class="bg-white p-4 rounded-2xl inline-block shadow-inner mx-auto my-2"></div>
+
+            <button onclick="closeQRModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition">
+                <span data-i18n="close">Cerrar</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- EDIT MODE MODAL -->
+    <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-700 p-5 rounded-3xl max-w-lg w-full my-8 space-y-4 text-left shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-blue-400"></i>
+                    <span data-i18n="editTitle">Editar Datos de Emergencia</span>
+                </h3>
+                <button onclick="toggleEditMode()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="editForm" onsubmit="saveEmergencyData(event)" class="space-y-3 text-xs">
+                <!-- Personal Info Inputs -->
+                <div class="space-y-2">
+                    <h4 class="font-bold text-blue-400 uppercase tracking-wider text-[11px]" data-i18n="personalData">Datos Personales</h4>
+                    <div>
+                        <label class="block text-slate-400 mb-1" data-i18n="fullName">Nombre Completo</label>
+                        <input type="text" id="inputName" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-400 mb-1" data-i18n="dob">Fecha Nacimiento (DD/MM/AAAA)</label>
+                            <input type="text" id="inputDob" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1" data-i18n="dni">DNI / Documento</label>
+                            <input type="text" id="inputDni" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-slate-800">
+
+                <!-- Contact 1 Inputs -->
+                <div class="space-y-2">
+                    <h4 class="font-bold text-emerald-400 uppercase tracking-wider text-[11px]" data-i18n="c1Header">Contacto 1 (Principal)</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-400 mb-1">Nombre y Relación</label>
+                            <input type="text" id="inputC1Name" placeholder="David Martín Chil (Esposo)" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1">Teléfono</label>
+                            <input type="tel" id="inputC1Phone" placeholder="608 72 30 24" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact 2 Inputs -->
+                <div class="space-y-2">
+                    <h4 class="font-bold text-emerald-400 uppercase tracking-wider text-[11px]" data-i18n="c2Header">Contacto 2 (Secundario)</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-400 mb-1">Nombre y Relación</label>
+                            <input type="text" id="inputC2Name" placeholder="Fabián (Hermano)" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1">Teléfono</label>
+                            <input type="tel" id="inputC2Phone" placeholder="699 64 79 33" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-slate-800">
+
+                <!-- Medical Inputs -->
+                <div class="space-y-2">
+                    <h4 class="font-bold text-red-400 uppercase tracking-wider text-[11px]" data-i18n="medicalInfo">Información Médica</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-400 mb-1" data-i18n="bloodType">Grupo Sanguíneo</label>
+                            <input type="text" id="inputBlood" placeholder="O+, A+, etc." class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1" data-i18n="organDonor">Donante Órganos</label>
+                            <input type="text" id="inputDonor" placeholder="Sí / No" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1" data-i18n="allergies">Alergias</label>
+                        <input type="text" id="inputAllergies" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1" data-i18n="medication">Medicación</label>
+                        <input type="text" id="inputMedication" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1" data-i18n="relevantInfo">Notas Relevantes</label>
+                        <textarea id="inputNotes" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-blue-500"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 pt-2">
+                    <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition shadow-lg">
+                        <i class="fa-solid fa-floppy-disk mr-1"></i> <span data-i18n="saveBtn">Guardar Cambios</span>
+                    </button>
+                    <button type="button" onclick="resetDefaultData()" class="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl border border-slate-700 transition" title="Restablecer">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            es: {
+                nfcTag: "NFC ACTIVO",
+                editBtn: "Editar",
+                emergencyCardTitle: "🚨 TARJETA DE EMERGENCIA I.C.E.",
+                heroSubtitle: "Información médica y de contacto para asistencia inmediata en caso de accidente o indisposición.",
+                shareLocation: "Compartir mi Ubicación GPS en Vivo",
+                call112: "LLAMAR AL 112",
+                personalData: "Datos Personales",
+                fullName: "Nombre completo",
+                dob: "Fecha Nacimiento",
+                dni: "DNI / Pasaporte",
+                residence: "Ubicación principal",
+                calculatedAge: "Edad calc.",
+                iceContacts: "Contactos de Emergencia (I.C.E.)",
+                primaryContact: "Contacto Principal",
+                secondaryContact: "Contacto Secundario",
+                call: "Llamar",
+                medicalInfo: "Información Médica Vital",
+                firstResponders: "Socorristas",
+                bloodType: "G. Sanguíneo",
+                organDonor: "Donante",
+                allergies: "Alergias Conocidas",
+                medication: "Medicación Habitual",
+                relevantInfo: "Historial / Observaciones Relevantes",
+                infoTitle: "Información de la Tarjeta",
+                infoText: "Has accedido a esta página mediante la tarjeta NFC personal de Ana Isabel Pulido Calderin. Esta interfaz interactiva contiene datos vitales de emergencia diseñados para facilitar su identificación inmediata, tratamiento médico primario y contacto directo con sus allegados en caso de imprevisto o emergencia médica.",
+                footerThanks: "Gracias por prestar asistencia ❤️",
+                qrTitle: "Código QR de Emergencia",
+                qrDesc: "Escanea este código con cualquier cámara móvil para abrir esta tarjeta de emergencia al instante.",
+                close: "Cerrar",
+                editTitle: "Editar Datos de Emergencia",
+                c1Header: "Contacto 1 (Principal)",
+                c2Header: "Contacto 2 (Secundario)",
+                saveBtn: "Guardar Cambios"
+            },
+            en: {
+                nfcTag: "NFC ACTIVE",
+                editBtn: "Edit",
+                emergencyCardTitle: "🚨 I.C.E. EMERGENCY CARD",
+                heroSubtitle: "Medical & contact information for immediate assistance in case of an accident or medical issue.",
+                shareLocation: "Share My Live GPS Location",
+                call112: "CALL 112 EMERGENCY",
+                personalData: "Personal Information",
+                fullName: "Full Name",
+                dob: "Date of Birth",
+                dni: "ID / Passport",
+                residence: "Primary Residence",
+                calculatedAge: "Calc. Age",
+                iceContacts: "In Case of Emergency (I.C.E.)",
+                primaryContact: "Primary Contact",
+                secondaryContact: "Secondary Contact",
+                call: "Call",
+                medicalInfo: "Vital Medical Information",
+                firstResponders: "First Responders",
+                bloodType: "Blood Type",
+                organDonor: "Organ Donor",
+                allergies: "Known Allergies",
+                medication: "Current Medication",
+                relevantInfo: "Medical History / Notes",
+                infoTitle: "Card Information",
+                infoText: "You accessed this page via Ana Isabel Pulido Calderin's personal NFC card. This interactive page contains vital emergency data designed to assist first responders in immediate identification, medical evaluation, and direct contact with family.",
+                footerThanks: "Thank you for providing assistance ❤️",
+                qrTitle: "Emergency QR Code",
+                qrDesc: "Scan this QR code with any mobile camera to immediately open this emergency card.",
+                close: "Close",
+                editTitle: "Edit Emergency Data",
+                c1Header: "Contact 1 (Primary)",
+                c2Header: "Contact 2 (Secondary)",
+                saveBtn: "Save Changes"
+            }
+        };
+
+        let currentLang = 'es';
+        let defaultData = {
+            name: "Ana Isabel Pulido Calderin",
+            dob: "26/07/1979",
+            dni: "*****000X",
+            residence: "Gran Canaria, España",
+            c1Name: "David Martín Chil",
+            c1Relation: "Esposo",
+            c1Phone: "608 72 30 24",
+            c2Name: "Fabián",
+            c2Relation: "Hermano",
+            c2Phone: "699 64 79 33",
+            blood: "Pendiente de añadir",
+            donor: "Sí (S.S. España)",
+            allergies: "• Pendiente de añadir.",
+            medication: "Pendiente de añadir.",
+            notes: "Pendiente de añadir. En caso de emergencia o accidente, contactar directamente a los familiares listados arriba."
+        };
+
+        let appData = { ...defaultData };
+
+        window.onload = function() {
+            loadSavedData();
+            calculateAge();
+            generateQRCode();
+        };
+
+        function loadSavedData() {
+            const saved = localStorage.getItem('ana_emergency_card_data');
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                } catch(e) {
+                    appData = { ...defaultData };
+                }
+            } else {
+                appData = { ...defaultData };
+            }
+            renderData();
+        }
+
+        function renderData() {
+            document.getElementById('displayName').innerText = appData.name || defaultData.name;
+            document.getElementById('fieldFullName').innerText = appData.name || defaultData.name;
+            document.getElementById('fieldDob').innerText = appData.dob || defaultData.dob;
+            document.getElementById('fieldDni').innerText = appData.dni || defaultData.dni;
+            document.getElementById('fieldResidence').innerText = appData.residence || defaultData.residence;
+
+            // Contacts
+            document.getElementById('c1Name').innerText = appData.c1Name || defaultData.c1Name;
+            document.getElementById('c1Relation').innerHTML = `${appData.c1Relation || defaultData.c1Relation} · <span id="c1Phone" class="font-mono text-slate-300">${appData.c1Phone || defaultData.c1Phone}</span>`;
+            
+            const cleanC1Phone = (appData.c1Phone || defaultData.c1Phone).replace(/\s+/g, '');
+            document.getElementById('c1CallBtn').href = `tel:+34${cleanC1Phone}`;
+            document.getElementById('c1WspBtn').href = `https://wa.me/34${cleanC1Phone}`;
+            document.getElementById('c1SmsBtn').href = `sms:+34${cleanC1Phone}`;
+
+            document.getElementById('c2Name').innerText = appData.c2Name || defaultData.c2Name;
+            document.getElementById('c2Relation').innerHTML = `${appData.c2Relation || defaultData.c2Relation} · <span id="c2Phone" class="font-mono text-slate-300">${appData.c2Phone || defaultData.c2Phone}</span>`;
+            
+            const cleanC2Phone = (appData.c2Phone || defaultData.c2Phone).replace(/\s+/g, '');
+            document.getElementById('c2CallBtn').href = `tel:+34${cleanC2Phone}`;
+            document.getElementById('c2WspBtn').href = `https://wa.me/34${cleanC2Phone}`;
+            document.getElementById('c2SmsBtn').href = `sms:+34${cleanC2Phone}`;
+
+            // Medical
+            document.getElementById('fieldBlood').innerText = appData.blood || defaultData.blood;
+            document.getElementById('fieldDonor').innerText = appData.donor || defaultData.donor;
+            document.getElementById('fieldAllergies').innerText = appData.allergies || defaultData.allergies;
+            document.getElementById('fieldMedication').innerText = appData.medication || defaultData.medication;
+            document.getElementById('fieldNotes').innerText = appData.notes || defaultData.notes;
+
+            calculateAge();
+        }
+
+        function calculateAge() {
+            const dobStr = appData.dob || defaultData.dob;
+            const parts = dobStr.split('/');
+            if (parts.length === 3) {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const year = parseInt(parts[2], 10);
+                const birthDate = new Date(year, month, day);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const m = today.getMonth() - birthDate.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                document.getElementById('calculatedAge').innerText = age + ' ' + (currentLang === 'es' ? 'años' : 'years');
+            }
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'es' ? 'en' : 'es';
+            document.getElementById('langLabel').innerText = currentLang === 'es' ? 'EN' : 'ES';
+
+            document.querySelectorAll('[data-i18n]').forEach(elem => {
+                const key = elem.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    elem.innerText = translations[currentLang][key];
+                }
+            });
+
+            calculateAge();
+            showToast(currentLang === 'es' ? 'Idioma cambiado a Español' : 'Language set to English', 'fa-globe');
+        }
+
+        function showToast(msg, icon = 'fa-circle-check') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.innerText = msg;
+            toastIcon.className = `fa-solid ${icon} text-green-400 text-lg`;
+            
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function shareGPSLocation() {
+            const btnText = document.getElementById('gpsBtnText');
+            btnText.innerText = currentLang === 'es' ? "Obteniendo coordenadas GPS..." : "Getting GPS coordinates...";
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        const mapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+                        
+                        const tempInput = document.createElement("input");
+                        tempInput.value = `¡URGENTE! Ubicación de emergencia de Ana Isabel: ${mapsUrl}`;
+                        document.body.appendChild(tempInput);
+                        tempInput.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(tempInput);
+
+                        btnText.innerText = currentLang === 'es' ? "¡Enlace Copiado al Portapapeles!" : "¡Link Copied to Clipboard!";
+                        showToast(currentLang === 'es' ? "Ubicación GPS copiada" : "GPS location copied", "fa-location-dot");
+
+                        setTimeout(() => {
+                            btnText.innerText = translations[currentLang].shareLocation;
+                        }, 4000);
+                    },
+                    (error) => {
+                        btnText.innerText = translations[currentLang].shareLocation;
+                        showToast(currentLang === 'es' ? "Por favor permite acceso a la ubicación" : "Please enable location permission", "fa-triangle-exclamation");
+                    },
+                    { enableHighAccuracy: true, timeout: 8000 }
+                );
+            } else {
+                btnText.innerText = translations[currentLang].shareLocation;
+                showToast("GPS no soportado en este navegador", "fa-circle-xmark");
+            }
+        }
+
+        function openQRModal() {
+            document.getElementById('qrModal').classList.remove('hidden');
+        }
+
+        function closeQRModal() {
+            document.getElementById('qrModal').classList.add('hidden');
+        }
+
+        function generateQRCode() {
+            const qrContainer = document.getElementById("qrcode");
+            qrContainer.innerHTML = "";
+            new QRCode(qrContainer, {
+                text: window.location.href,
+                width: 160,
+                height: 160,
+                colorDark : "#07111c",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+
+        function toggleEditMode() {
+            const modal = document.getElementById('editModal');
+            const isHidden = modal.classList.contains('hidden');
+
+            if (isHidden) {
+                document.getElementById('inputName').value = appData.name || defaultData.name;
+                document.getElementById('inputDob').value = appData.dob || defaultData.dob;
+                document.getElementById('inputDni').value = appData.dni || defaultData.dni;
+                document.getElementById('inputC1Name').value = `${appData.c1Name || defaultData.c1Name} (${appData.c1Relation || defaultData.c1Relation})`;
+                document.getElementById('inputC1Phone').value = appData.c1Phone || defaultData.c1Phone;
+                document.getElementById('inputC2Name').value = `${appData.c2Name || defaultData.c2Name} (${appData.c2Relation || defaultData.c2Relation})`;
+                document.getElementById('inputC2Phone').value = appData.c2Phone || defaultData.c2Phone;
+                document.getElementById('inputBlood').value = appData.blood || defaultData.blood;
+                document.getElementById('inputDonor').value = appData.donor || defaultData.donor;
+                document.getElementById('inputAllergies').value = appData.allergies || defaultData.allergies;
+                document.getElementById('inputMedication').value = appData.medication || defaultData.medication;
+                document.getElementById('inputNotes').value = appData.notes || defaultData.notes;
+
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function saveEmergencyData(event) {
+            event.preventDefault();
+
+            appData.name = document.getElementById('inputName').value;
+            appData.dob = document.getElementById('inputDob').value;
+            appData.dni = document.getElementById('inputDni').value;
+
+            const c1Full = document.getElementById('inputC1Name').value;
+            if (c1Full.includes('(') && c1Full.includes(')')) {
+                appData.c1Name = c1Full.split('(')[0].trim();
+                appData.c1Relation = c1Full.split('(')[1].replace(')', '').trim();
+            } else {
+                appData.c1Name = c1Full;
+            }
+            appData.c1Phone = document.getElementById('inputC1Phone').value;
+
+            const c2Full = document.getElementById('inputC2Name').value;
+            if (c2Full.includes('(') && c2Full.includes(')')) {
+                appData.c2Name = c2Full.split('(')[0].trim();
+                appData.c2Relation = c2Full.split('(')[1].replace(')', '').trim();
+            } else {
+                appData.c2Name = c2Full;
+            }
+            appData.c2Phone = document.getElementById('inputC2Phone').value;
+
+            appData.blood = document.getElementById('inputBlood').value;
+            appData.donor = document.getElementById('inputDonor').value;
+            appData.allergies = document.getElementById('inputAllergies').value;
+            appData.medication = document.getElementById('inputMedication').value;
+            appData.notes = document.getElementById('inputNotes').value;
+
+            localStorage.setItem('ana_emergency_card_data', JSON.stringify(appData));
+
+            renderData();
+            toggleEditMode();
+            showToast(currentLang === 'es' ? '¡Datos guardados con éxito!' : 'Data saved successfully!');
+        }
+
+        function resetDefaultData() {
+            appData = { ...defaultData };
+            localStorage.removeItem('ana_emergency_card_data');
+            renderData();
+            toggleEditMode();
+            showToast(currentLang === 'es' ? 'Datos restablecidos' : 'Data reset to default', 'fa-rotate-left');
+        }
+    </script>
+</body>
+</html>
+```
